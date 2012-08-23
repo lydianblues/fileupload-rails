@@ -228,12 +228,13 @@
             progress: function (e, data) {
                 if (data.context) {
                     var progress = parseInt(data.loaded / data.total * 100, 10);
+                    console.log("Progress is " + progress + " %");
                     data.context.find('.progress')
                         .attr('aria-valuenow', progress)
-                        .find('.bar').css(
-                            'width',
-                            progress + '%'
-                        );
+                        .find('.bar')
+                        .progressbar({
+                            value: progress
+                        });
                 }
             },
             // Callback for global upload progress events:
@@ -247,14 +248,23 @@
                     extendedProgressNode.html(
                         $this.data('fileupload')._renderExtendedProgress(data)
                     );
-                }
+                };
+                console.log("Global progress is " + progress + "%");
+                
                 globalProgressNode
                     .find('.progress')
                     .attr('aria-valuenow', progress)
-                    .find('.bar').css(
-                        'width',
-                        progress + '%'
-                    );
+                    
+                    // Use this for Twitter Bootstrap
+                    // .find('.bar').css(
+                    //    'width',
+                    //    progress + '%'
+                    // );
+                    
+                    // Use this for jQuery UI
+                    .progressbar({
+                        value: progress
+                    });
             },
             // Callback for uploads start, equivalent to the global ajaxStart event:
             start: function (e) {
@@ -418,6 +428,7 @@
         },
 
         _renderTemplate: function (func, files) {
+            var rows;
             if (!func) {
                 return $();
             }
@@ -429,7 +440,12 @@
             if (result instanceof $) {
                 return result;
             }
-            return $(this.options.templatesContainer).html(result).children();
+            // rows = jQuery("tr.template-upload")
+            rows = $(this.options.templatesContainer).html(result).children();
+            rows.find(".progress .bar").each(function(index, element) {
+                $(element).progressbar({value: 0});
+            });
+            return rows;
         },
 
         _renderPreview: function (file, node) {
@@ -482,10 +498,18 @@
         },
 
         _renderUpload: function (files) {
-            return this._renderTemplate(
+            var result = this._renderTemplate(
                 this.options.uploadTemplate,
                 files
             );
+             
+             // this.element is a '.fileupload-control' form.  The
+             // template inside this form was just rendered.  Every
+             // time we re-render the template, the progress bars in
+             // the new template instance must be initialized.
+             $(this.element).find('.progress').progressbar({value: 0});
+            
+            return result;
         },
 
         _renderDownload: function (files) {

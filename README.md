@@ -1,4 +1,4 @@
-# Fileupload::Rails
+# FileUpload::Rails
 
 TODO: Write a gem description
 

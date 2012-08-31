@@ -1,0 +1,102 @@
+diff --git a/vendor/assets/javascripts/fileupload/jquery.fileupload-ui.js b/vendor/assets/javascripts/fileupload/jquery.fileupload-ui.js
+index 4c36f00..a0f13a3 100644
+--- a/vendor/assets/javascripts/fileupload/jquery.fileupload-ui.js
++++ b/vendor/assets/javascripts/fileupload/jquery.fileupload-ui.js
+@@ -243,10 +243,17 @@
+                     var progress = parseInt(data.loaded / data.total * 100, 10);
+                     data.context.find('.progress')
+                         .attr('aria-valuenow', progress)
+-                        .find('.bar').css(
+-                            'width',
+-                            progress + '%'
+-                        );
++                        // Use this for Twitter Bootstrap
++                        // .find('.bar').css(
++                        //    'width',
++                        //    progress + '%'
++                        // );
++                        
++                        // Use this for jQuery UI
++                        .find('.bar')
++                        .progressbar({
++                             value: progress
++                        });
+                 }
+             },
+             // Callback for global upload progress events:
+@@ -264,10 +271,17 @@
+                 globalProgressNode
+                     .find('.progress')
+                     .attr('aria-valuenow', progress)
+-                    .find('.bar').css(
+-                        'width',
+-                        progress + '%'
+-                    );
++                    
++                    // Use this for Twitter Bootstrap
++                    // .find('.bar').css(
++                    //    'width',
++                    //    progress + '%'
++                    // );
++                    
++                    // Use this for jQuery UI
++                    .progressbar({
++                        value: progress
++                    });
+             },
+             // Callback for uploads start, equivalent to the global ajaxStart event:
+             start: function (e) {
+@@ -431,6 +445,8 @@
+         },
+ 
+         _renderTemplate: function (func, files) {
++            var rows;
++            
+             if (!func) {
+                 return $();
+             }
+@@ -439,10 +455,18 @@
+                 formatFileSize: this._formatFileSize,
+                 options: this.options
+             });
++            
+             if (result instanceof $) {
+                 return result;
+             }
+-            return $(this.options.templatesContainer).html(result).children();
++            
++            rows = $(this.options.templatesContainer).html(result).children();
++            
++            // Add this line for jQuery UI
++            rows.find(".progress .bar").each(function(index, element) {
++                $(element).progressbar({value: 0});
++            });
++            return rows;
+         },
+ 
+         _renderPreview: function (file, node) {
+@@ -495,14 +519,22 @@
+         },
+ 
+         _renderUpload: function (files) {
+-            return this._renderTemplate(
++            var result =  this._renderTemplate(
+                 this.options.uploadTemplate,
+                 files
+             );
++            
++            // Every time we re-render the template, the progress bars in
++            // the new template instance must be initialized.
++            $(this.element).find('.progress').progressbar({value: 0});
++            return result;
++            
++            // Use this for Twitter Bootstrap
++            //return result;
+         },
+ 
+         _renderDownload: function (files) {
+-            return this._renderTemplate(
++            this._renderTemplate(
+                 this.options.downloadTemplate,
+                 files
+             ).find('a[download]').each(this._enableDragToDesktop).end();

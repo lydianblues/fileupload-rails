@@ -1,5 +1,5 @@
 /*
- * jQuery File Upload User Interface Plugin 6.9.3
+ * jQuery File Upload User Interface Plugin 6.9.4
  * https://github.com/blueimp/jQuery-File-Upload
  *
  * Copyright 2010, Sebastian Tschan
@@ -89,7 +89,7 @@
                     files = data.files;
                 $(this).fileupload('process', data).done(function () {
                     that._adjustMaxNumberOfFiles(-files.length);
-                    data.isAdjusted = true;
+                    data.maxNumberOfFilesAdjusted = true;
                     data.files.valid = data.isValidated = that._validate(files);
                     data.context = that._renderUpload(files).data('data', data);
                     options.filesContainer[
@@ -112,8 +112,9 @@
             send: function (e, data) {
                 var that = $(this).data('fileupload');
                 if (!data.isValidated) {
-                    if (!data.isAdjusted) {
+                    if (!data.maxNumberOfFilesAdjusted) {
                         that._adjustMaxNumberOfFiles(-data.files.length);
+                        data.maxNumberOfFilesAdjusted = true;
                     }
                     if (!that._validate(data.files)) {
                         return false;
@@ -163,6 +164,17 @@
                         );
                     });
                 } else {
+                    if ($.isArray(data.result)) {
+                        $.each(data.result, function (index, file) {
+                            if (data.maxNumberOfFilesAdjusted && file.error) {
+                                that._adjustMaxNumberOfFiles(1);
+                            } else if (!data.maxNumberOfFilesAdjusted &&
+                                    !file.error) {
+                                that._adjustMaxNumberOfFiles(-1);
+                            }
+                        });
+                        data.maxNumberOfFilesAdjusted = true;
+                    }
                     template = that._renderDownload(data.result)
                         .appendTo(that.options.filesContainer);
                     that._forceReflow(template);
@@ -178,7 +190,9 @@
             fail: function (e, data) {
                 var that = $(this).data('fileupload'),
                     template;
-                that._adjustMaxNumberOfFiles(data.files.length);
+                if (data.maxNumberOfFilesAdjusted) {
+                    that._adjustMaxNumberOfFiles(data.files.length);
+                }
                 if (data.context) {
                     data.context.each(function (index) {
                         if (data.errorThrown !== 'abort') {
@@ -209,7 +223,6 @@
                         }
                     });
                 } else if (data.errorThrown !== 'abort') {
-                    that._adjustMaxNumberOfFiles(-data.files.length);
                     data.context = that._renderUpload(data.files)
                         .appendTo(that.options.filesContainer)
                         .data('data', data);
@@ -228,13 +241,12 @@
             progress: function (e, data) {
                 if (data.context) {
                     var progress = parseInt(data.loaded / data.total * 100, 10);
-                    console.log("Progress is " + progress + " %");
                     data.context.find('.progress')
                         .attr('aria-valuenow', progress)
-                        .find('.bar')
-                        .progressbar({
-                            value: progress
-                        });
+                        .find('.bar').css(
+                            'width',
+                            progress + '%'
+                        );
                 }
             },
             // Callback for global upload progress events:
@@ -248,23 +260,14 @@
                     extendedProgressNode.html(
                         $this.data('fileupload')._renderExtendedProgress(data)
                     );
-                };
-                console.log("Global progress is " + progress + "%");
-                
+                }
                 globalProgressNode
                     .find('.progress')
                     .attr('aria-valuenow', progress)
-                    
-                    // Use this for Twitter Bootstrap
-                    // .find('.bar').css(
-                    //    'width',
-                    //    progress + '%'
-                    // );
-                    
-                    // Use this for jQuery UI
-                    .progressbar({
-                        value: progress
-                    });
+                    .find('.bar').css(
+                        'width',
+                        progress + '%'
+                    );
             },
             // Callback for uploads start, equivalent to the global ajaxStart event:
             start: function (e) {
@@ -428,7 +431,6 @@
         },
 
         _renderTemplate: function (func, files) {
-            var rows;
             if (!func) {
                 return $();
             }
@@ -440,12 +442,7 @@
             if (result instanceof $) {
                 return result;
             }
-            // rows = jQuery("tr.template-upload")
-            rows = $(this.options.templatesContainer).html(result).children();
-            rows.find(".progress .bar").each(function(index, element) {
-                $(element).progressbar({value: 0});
-            });
-            return rows;
+            return $(this.options.templatesContainer).html(result).children();
         },
 
         _renderPreview: function (file, node) {
@@ -498,18 +495,10 @@
         },
 
         _renderUpload: function (files) {
-            var result = this._renderTemplate(
+            return this._renderTemplate(
                 this.options.uploadTemplate,
                 files
             );
-             
-             // this.element is a '.fileupload-control' form.  The
-             // template inside this form was just rendered.  Every
-             // time we re-render the template, the progress bars in
-             // the new template instance must be initialized.
-             $(this.element).find('.progress').progressbar({value: 0});
-            
-            return result;
         },
 
         _renderDownload: function (files) {
